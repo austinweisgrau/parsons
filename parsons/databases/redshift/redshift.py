@@ -695,6 +695,7 @@ class Redshift(
         sql,
         bucket,
         key_prefix,
+        parameters=None,
         manifest=True,
         header=True,
         delimiter="|",
@@ -714,12 +715,35 @@ class Redshift(
         to export data as it can export in parallel and directly into an S3 bucket. Consider
         using this for exports of 10MM or more rows.
 
+        To include python variables in your query, it is recommended to pass them as parameters,
+        following the `psycopg style <http://initd.org/psycopg/docs/usage.html#passing-parameters-to-sql-queries>`_.
+        Using the ``parameters`` argument ensures that values are escaped properly, and avoids SQL
+        injection attacks.
+
+        **Parameter Examples**
+
+        .. code-block:: python
+
+            # Note that the name contains a quote, which could break your query if not escaped
+            # properly.
+            name = "Beatrice O'Brady"
+            sql = "SELECT * FROM my_table WHERE name = %s"
+            rs.query(sql, parameters=[name])
+
+        .. code-block:: python
+
+            names = ("Allen Smith", "Beatrice O'Brady", "Cathy Thompson")
+            sql = f"SELECT * FROM my_table WHERE name IN %(names)s"
+            rs.query(sql, parameters={'names': names})
+
         sql: str
             The SQL string to execute to generate the data to unload.
         buckey: str
            The destination S3 bucket
         key_prefix: str
             The prefix of the key names that will be written
+        parameters: dict or list
+            A list or dict of python variables to be converted into SQL values in your query
         manifest: boolean
             Creates a manifest file that explicitly lists details for the data files
             that are created by the UNLOAD process.
@@ -797,7 +821,7 @@ class Redshift(
         statement_censored = sql_helpers.redact_credentials(statement)
         logger.debug(statement_censored)
 
-        return self.query(statement)
+        return self.query(statement, parameters=parameters)
 
     def generate_manifest(
         self,
