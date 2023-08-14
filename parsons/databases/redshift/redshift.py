@@ -174,16 +174,15 @@ class Redshift(
 
         .. code-block:: python
 
-            names = ["Allen Smith", "Beatrice O'Brady", "Cathy Thompson"]
-            placeholders = ', '.join('%s' for item in names)
-            sql = f"SELECT * FROM my_table WHERE name IN ({placeholders})"
-            rs.query(sql, parameters=names)
+            names = ("Allen Smith", "Beatrice O'Brady", "Cathy Thompson")
+            sql = f"SELECT * FROM my_table WHERE name IN %(names)s"
+            rs.query(sql, parameters={'names': names})
 
         `Args:`
             sql: str
                 A valid SQL statement
-            parameters: list
-                A list of python variables to be converted into SQL values in your query
+            parameters: list or dict
+                A list or dict of python variables to be converted into SQL values in your query
 
         `Returns:`
             Parsons Table
