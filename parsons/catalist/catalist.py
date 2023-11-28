@@ -16,6 +16,7 @@ import requests
 from parsons.etl import Table
 from parsons.sftp import SFTP
 from parsons.utilities.api_connector import APIConnector
+from parsons.catalist.models import MatchStatus
 
 logger = logging.getLogger(__name__)
 
@@ -320,11 +321,12 @@ class CatalistMatch:
 
         return result
 
-    def status(self, id: str) -> dict:
+    def status(self, id: str) -> MatchStatus:
         """Check status of a match job."""
         endpoint = "/".join(["status", "id", id])
         query_params = {"token": self.token}
-        result = self.connection.get_request(endpoint, params=query_params)
+        response = self.connection.get_request(endpoint, params=query_params)
+        result = MatchStatus(**response)
         return result
 
     def await_completion(self, id: str, wait: int = 30) -> Table:
@@ -338,12 +340,12 @@ class CatalistMatch:
         completion."""
         while True:
             response = self.status(id)
-            status = response["process"]["processState"]
-            if status in ("Finished", "Error", "Stopped", "Exception"):
-                logger.info(f"Job {id} is complete with status {status}.")
+
+            if response.is_completed:
+                logger.info(f"Job {id} is complete with status {response.status}.")
                 break
 
-            logger.info(f"Job {id} has status {status}, awaiting completion.")
+            logger.info(f"Job {id} has status {response.status}, awaiting completion.")
             time.sleep(wait)
 
         result = self.load_matches(id)

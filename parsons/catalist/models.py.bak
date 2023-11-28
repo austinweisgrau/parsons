@@ -1,0 +1,59 @@
+from dataclasses import dataclass
+from typing import Literal
+
+@dataclass
+class MatchStatusProcess:
+    processName: Literal["PREPROCESS", "PREPARE", "EXPORT", "PUBLISH", "APICALL"]
+    processState: Literal[
+        "Unprocessed",
+        "Waiting",
+        "Pending",
+        "Queued",
+        "Processing",
+        "Finished",
+        "Error",
+        "Stopped",
+        "Exception",
+    ]
+    processId: str
+    percentCompleted: float
+
+@dataclass
+class MatchStatusValidation:
+    batchFileId: str
+    statusMessage: str
+    valid: bool
+    linesPassed: int
+    linesFailed: int
+    ruleResults: list[dict]
+
+@dataclass
+class MatchStatusColumn:
+    header: str
+    index: int
+    dataType: Literal["CHAR", "INT", "NNINT", "FLOAT", "PERCENT", "DATE", "BOOLEAN"]
+    synthetic: bool
+    coverage: float | None = None
+
+@dataclass
+class MatchStatus:
+    id: str
+    fileName: str
+    created: str
+    columns: list[MatchStatusColumn]
+    process: MatchStatusProcess
+    validation: MatchStatusValidation | None = None
+
+    @property
+    def is_completed(self) -> bool:
+        result = False
+        if self.process.processState in ("Finished", "Error", "Stopped", "Exception"):
+            result = True
+        return result
+
+    @property
+    def completed_successfully(self) -> bool:
+        result = False
+        if self.process.processState == "Finished":
+            result = True
+        return result
