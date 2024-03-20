@@ -122,7 +122,9 @@ class SFTP(object):
             with self.create_connection() as connection:
                 connection.rmdir(remote_path)
 
-    def get_file(self, remote_path, local_path=None, connection=None):
+    def get_file(
+        self, remote_path, local_path=None, connection=None, verbose: bool = True
+    ):
         """
         Download a file from the SFTP server
 
@@ -135,19 +137,24 @@ class SFTP(object):
                 when the script is done running.
             connection: obj
                 An SFTP connection object
+            verbose: bool
+                Log progress every 5MB. Defaults to True.
         `Returns:`
             str
                 The path of the local file
         """
-
+        if verbose:
+            callback = self._progress
+        else:
+            callback = None
         if not local_path:
             local_path = file_utilities.create_temp_file_for_path(remote_path)
 
         if connection:
-            connection.get(remote_path, local_path)
+            connection.get(remote_path, local_path, callback=callback)
         else:
             with self.create_connection() as connection:
-                connection.get(remote_path, local_path)
+                connection.get(remote_path, local_path, callback=callback)
 
         return local_path
 
