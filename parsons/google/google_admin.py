@@ -27,7 +27,9 @@ class GoogleAdmin(object):
 
     def __init__(self, app_creds=None, sub=None):
         env_credentials_path = str(uuid.uuid4())
-        setup_google_application_credentials(app_creds, target_env_var_name=env_credentials_path)
+        setup_google_application_credentials(
+            app_creds, target_env_var_name=env_credentials_path
+        )
         credentials = load_google_application_credentials(
             env_credentials_path,
             scopes=["https://www.googleapis.com/auth/admin.directory.group"],
@@ -64,7 +66,9 @@ class GoogleAdmin(object):
                     param_arr.append("pageToken=" + res["nextPageToken"])
                 else:
                     param_arr[-1] = "pageToken=" + res["nextPageToken"]
-                response = self.client.request("GET", req_url + "?" + "&".join(param_arr)).json()
+                response = self.client.request(
+                    "GET", req_url + "?" + "&".join(param_arr)
+                ).json()
                 if "error" in response:
                     raise RuntimeError(response["error"].get("message"))
                 ret += response[collection]
@@ -84,7 +88,9 @@ class GoogleAdmin(object):
         `Returns:`
             Table Class
         """
-        return self._paginate_request("groups/" + group_key + "/aliases", "aliases", params)
+        return self._paginate_request(
+            "groups/" + group_key + "/aliases", "aliases", params
+        )
 
     def get_all_group_members(self, group_key, params=None):
         """
@@ -99,7 +105,9 @@ class GoogleAdmin(object):
         `Returns:`
             Table Class
         """
-        return self._paginate_request("groups/" + group_key + "/members", "members", params)
+        return self._paginate_request(
+            "groups/" + group_key + "/members", "members", params
+        )
 
     def get_all_groups(self, params=None):
         """

@@ -48,7 +48,9 @@ def hexavigesimal(n: int) -> str:
             The hexavigeseimal representation of n
     """
     if n < 1:
-        raise ValueError(f"This function only works for positive integers. Provided value {n}.")
+        raise ValueError(
+            f"This function only works for positive integers. Provided value {n}."
+        )
 
     chars = ""
     while n != 0:
@@ -65,7 +67,9 @@ def load_google_application_credentials(
 
     service_account_filepath = os.environ[env_var_name]
 
-    credentials = service_account.Credentials.from_service_account_file(service_account_filepath)
+    credentials = service_account.Credentials.from_service_account_file(
+        service_account_filepath
+    )
 
     if scopes:
         credentials = credentials.with_scopes(scopes)
