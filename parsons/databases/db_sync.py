@@ -226,6 +226,7 @@ class DBSync:
                 dest_max,
                 updated_at_column,
                 primary_key,
+                **kwargs,
             )
 
             logger.info("Upserted %s updated rows to %s.", rows_upserted, destination_table)
@@ -401,6 +402,7 @@ class DBSync:
         ],  # Type hint is probably incomplete
         updated_at_column: str,
         primary_key: str,
+        **kwargs,
     ) -> int:
         """
         Upsert rows from the source to the destination based on updated_at_column
@@ -416,6 +418,8 @@ class DBSync:
                 Column which tracks the update timestamp
             primary_key:
                 Column which serves as unique primary key
+            **kwargs: args
+                Optional copy arguments for destination database.
         `Returns:`
             total_rows_written: int
         """
@@ -448,7 +452,7 @@ class DBSync:
             if not len(rows) or len(buffer) >= self.write_chunk_size:
                 logger.debug("Copying %s rows to %s", len(buffer), destination_table_name)
                 if not self.dest_db.table_exists(destination_table_name):
-                    self.dest_db.copy(buffer, destination_table_name, if_exists="append")
+                    self.dest_db.copy(buffer, destination_table_name, if_exists="append", **kwargs)
                 else:
                     # Load buffer to temp table, upsert from temp table
                     temp_table_name = (
@@ -460,12 +464,12 @@ class DBSync:
                     # If certain columns in buffer are null, the types may not line up
                     # in destination db. We need a way to deal with this, but there is
                     # no unified API for handling schema
-                    if isinstance(self.dest_db, GoogleBigQuery):
-                        kwargs = {
-                            "schema": self.dest_db.client.get_table(destination_table_name).schema
-                        }
-                    else:
+                    if not kwargs:
                         kwargs = {}
+                    if "schema" not in kwargs and isinstance(self.dest_db, GoogleBigQuery):
+                        kwargs["schema"] = self.dest_db.client.get_table(
+                            destination_table_name
+                        ).schema
 
                     self.dest_db.copy(buffer, temp_table_name, if_exists="drop", **kwargs)
                     try:
