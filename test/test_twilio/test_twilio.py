@@ -34,18 +34,21 @@ class TestTwilio(unittest.TestCase):
     def test_get_account_usage(self):
 
         # Make sure that it is calling the correct Twilio methods
+        self.twilio.client.usage.records.today.list.assert_not_called()
         self.twilio.get_account_usage(time_period="today")
-        assert self.twilio.client.usage.records.today.list.called_with(time_period="today")
+        self.twilio.client.usage.records.today.list.assert_called()
+
+        self.twilio.client.usage.records.last_month.list.assert_not_called()
         self.twilio.get_account_usage(time_period="last_month")
-        assert self.twilio.client.usage.records.last_month.list.called_with(
-            time_period="last_month"
-        )
+        self.twilio.client.usage.records.last_month.list.assert_called()
+
+        self.twilio.client.usage.records.this_month.list.assert_not_called()
         self.twilio.get_account_usage(time_period="this_month")
-        assert self.twilio.client.usage.records.this_month.list.called_with(
-            time_period="this_month"
-        )
+        self.twilio.client.usage.records.this_month.list.assert_called()
+
+        self.twilio.client.usage.records.yesterday.list.assert_not_called()
         self.twilio.get_account_usage(time_period="yesterday")
-        assert self.twilio.client.usage.records.today.list.called_with(time_period="yesterday")
+        self.twilio.client.usage.records.yesterday.list.assert_called()
 
         # Make sure that it is calling the correct Twilio methods
         self.twilio.get_account_usage(time_period="daily", start_date="10-19-2019")
