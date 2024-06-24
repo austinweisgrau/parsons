@@ -713,7 +713,7 @@ class GoogleBigQuery(DatabaseConnector):
             or self.tmp_gcs_bucket
             or check_env.check("GCS_TEMP_BUCKET", tmp_gcs_bucket)
         )
-        gcs_client = gcs_client or GoogleCloudStorage(app_creds=self.app_creds)        
+        gcs_client = gcs_client or GoogleCloudStorage(app_creds=self.app_creds)
         temp_blob_uri = gcs_client.copy_s3_to_gcs(
             aws_source_bucket=bucket,
             aws_access_key_id=aws_access_key_id,
@@ -805,6 +805,15 @@ class GoogleBigQuery(DatabaseConnector):
 
         self._validate_copy_inputs(if_exists=if_exists, data_type=data_type)
 
+        # If our source table is loaded from CSV with no transformations
+        # The original source file will be directly loaded to GCS
+        # We may need to pass along a custom delimiter to BigQuery
+        # Otherwise we use the default comma
+        if isinstance(tbl.table, petl.io.csv_py3.CSVView):
+            csv_delimiter = tbl.table.csvargs.get("delimiter", ",")
+        else:
+            csv_delimiter = ","
+
         job_config = self._process_job_config(
             job_config=job_config,
             destination_table_name=table_name,
@@ -819,6 +828,7 @@ class GoogleBigQuery(DatabaseConnector):
             allow_jagged_rows=allow_jagged_rows,
             quote=quote,
             custom_schema=schema,
+            csv_delimiter=csv_delimiter,
         )
 
         # Reorder schema to match table to ensure compatibility
