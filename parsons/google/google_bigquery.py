@@ -712,7 +712,7 @@ class GoogleBigQuery(DatabaseConnector):
             or self.tmp_gcs_bucket
             or check_env.check("GCS_TEMP_BUCKET", tmp_gcs_bucket)
         )
-        gcs_client = gcs_client or GoogleCloudStorage()
+        gcs_client = gcs_client or GoogleCloudStorage(app_creds=self.app_creds)
         temp_blob_uri = gcs_client.copy_s3_to_gcs(
             aws_source_bucket=bucket,
             aws_access_key_id=aws_access_key_id,
