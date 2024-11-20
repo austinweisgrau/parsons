@@ -49,7 +49,7 @@ def main():
             "mobilecommons": ["bs4"],
             "postgres": [
                 "psycopg2-binary>=2.9.9",
-                "sqlalchemy >= 1.4.22, != 1.4.33, < 2.0.0",
+                "sqlalchemy >= 1.4.22, != 1.4.33",
             ],
             "redshift": [
                 "boto3",
