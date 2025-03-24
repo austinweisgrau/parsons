@@ -1,33 +1,37 @@
 import os
 import time
 import warnings
+from typing import Optional
 
 import requests
-from slackclient import SlackClient
-from slackclient.exceptions import SlackClientError
+from slack_sdk.errors import SlackApiError
+from slacksdk import WebClient
 
 from parsons.etl.table import Table
 from parsons.utilities.check_env import check
 
 
-class Slack(object):
-    def __init__(self, api_key=None):
+class Slack:
+    def __init__(self, api_key: str = None):
         if api_key is None:
             try:
-                self.api_key = os.environ["SLACK_API_TOKEN"]
-
+                self.client = WebClient(token=os.environ["SLACK_API_TOKEN"])
             except KeyError:
                 raise KeyError(
                     "Missing api_key. It must be passed as an "
                     "argument or stored as environmental variable"
                 )
-
         else:
             self.api_key = api_key
 
-        self.client = SlackClient(self.api_key)
+        self.client = WebClient(token=self.api_key)
 
-    def channels(self, fields=["id", "name"], exclude_archived=False, types=["public_channel"]):
+    def channels(
+        self,
+        fields=["id", "name"],
+        exclude_archived: bool = False,
+        types: list[str] = ["public_channel"],
+    ) -> Table:
         """
         Return a list of all channels in a Slack team.
 
@@ -65,14 +69,14 @@ class Slack(object):
 
     def users(
         self,
-        fields=[
+        fields: list[str] = [
             "id",
             "name",
             "deleted",
             "profile_real_name_normalized",
             "profile_email",
         ],
-    ):
+    ) -> Table:
         """
         Return a list of all users in a Slack team.
 
@@ -97,7 +101,13 @@ class Slack(object):
         return tbl
 
     @classmethod
-    def message(cls, channel, text, webhook=None, parent_message_id=None):
+    def message(
+        cls,
+        channel: str,
+        text: str,
+        webhook: Optional[str] = None,
+        parent_message_id: Optional[str] = None,
+    ):
         """
         Send a message to a Slack channel with a webhook instead of an api_key.
         You might not have the full-access API key but still want to notify a channel
@@ -119,7 +129,9 @@ class Slack(object):
             payload["thread_ts"] = parent_message_id
         return requests.post(webhook, json=payload)
 
-    def message_channel(self, channel, text, parent_message_id=None, **kwargs):
+    def message_channel(
+        self, channel: str, text: str, parent_message_id: Optional[str] = None, **kwargs
+    ):
         """
         Send a message to a Slack channel
 
@@ -160,37 +172,24 @@ class Slack(object):
             )
             kwargs.pop("thread_ts", None)
 
-        resp = self.client.api_call(
-            "chat.postMessage",
+        response = self._request_with_rate_limit_retry(
+            self.client.chat_postMessage,
             channel=channel,
             text=text,
             thread_ts=parent_message_id,
             **kwargs,
         )
-
-        if not resp["ok"]:
-            if resp["error"] == "ratelimited":
-                time.sleep(int(resp["headers"]["Retry-After"]))
-
-                resp = self.client.api_call(
-                    "chat.postMessage", channel=channel, text=text, **kwargs
-                )
-
-            resp.pop("headers", None)
-
-            raise SlackClientError(resp)
-
-        return resp
+        return response
 
     def upload_file(
         self,
-        channels,
-        filename,
-        filetype=None,
-        initial_comment=None,
-        title=None,
-        is_binary=False,
-    ):
+        channels: list[str],
+        filename: str,
+        initial_comment: Optional[str] = None,
+        title: Optional[str] = None,
+        is_binary: None = None,
+        filetype: None = None,
+    ) -> list[dict]:
         """
         Upload a file to Slack channel(s).
 
@@ -199,55 +198,41 @@ class Slack(object):
                 The list of channel names or IDs where the file will be shared.
             filename: str
                 The path to the file to be uploaded.
-            filetype: str
-                A file type identifier. If None, type will be inferred base on
-                file extension. This is used to determine what fields are
-                available for that object. See https://api.slack.com/types/file
-                for a list of valid types and for more information about the
-                file object.
             initial_comment: str
                 The text of the message to send along with the file.
             title: str
                 Title of the file to be uploaded.
-            is_binary: bool
-                If True, open this file in binary mode. This is needed if
-                uploading binary files. Defaults to False.
+            is_binary: None
+                This argument is deprecated.
+            filetype: None
+                This argument is deprecated.
         `Returns:`
-            `dict`:
-                A response json
+            `list[dict]`:
+                A list of response jsons
         """
-        if filetype is None and "." in filename:
-            filetype = filename.split(".")[-1]
-
-        mode = "rb" if is_binary else "r"
-        with open(filename, mode) as file_content:
-            resp = self.client.api_call(
-                "files.upload",
-                channels=channels,
-                file=file_content,
-                filetype=filetype,
+        if filetype is not None:
+            warnings.warn(
+                "`filetype` is a deprecated argument and will be removed in a future Parsons version.",
+                DeprecationWarning,
+            )
+        if is_binary is not None:
+            warnings.warn(
+                "`is_binary` is a deprecated argument and will be removed in a future Parsons version.",
+                DeprecationWarning,
+            )
+        responses = []
+        for channel in channels:
+            response = self._request_with_rate_limit_retry(
+                self.client.files_upload_v2,
+                channel=channel,
+                file=filename,
                 initial_comment=initial_comment,
                 title=title,
             )
+            responses.append(response)
+        return responses
 
-            if not resp["ok"]:
-                if resp["error"] == "ratelimited":
-                    time.sleep(int(resp["headers"]["Retry-After"]))
-
-                    resp = self.client.api_call(
-                        "files.upload",
-                        channels=channels,
-                        file=file_content,
-                        filetype=filetype,
-                        initial_comment=initial_comment,
-                        title=title,
-                    )
-
-                raise SlackClientError(resp["error"])
-
-        return resp
-
-    def _paginate_request(self, endpoint, collection, **kwargs):
+    def _paginate_request(self, endpoint: str, collection: str, **kwargs) -> Table:
         # The max object we're requesting at a time.
         # This is an nternal limit to not overload slack api
         LIMIT = 200
@@ -256,20 +241,33 @@ class Slack(object):
         next_page = True
         cursor = None
         while next_page:
-            resp = self.client.api_call(endpoint, cursor=cursor, limit=LIMIT, **kwargs)
+            response = self._request_with_rate_limit_retry(
+                self.client.api_call,
+                endpoint=endpoint,
+                cursor=cursor,
+                limit=LIMIT,
+                **kwargs,
+            )
 
-            if not resp["ok"]:
-                if resp["error"] == "ratelimited":
-                    time.sleep(int(resp["headers"]["Retry-After"]))
-                    continue
+            items.extend(response[collection])
 
-                raise SlackClientError(resp["error"])
-
-            items.extend(resp[collection])
-
-            if resp["response_metadata"]["next_cursor"]:
-                cursor = resp["response_metadata"]["next_cursor"]
+            if response["response_metadata"]["next_cursor"]:
+                cursor = response["response_metadata"]["next_cursor"]
             else:
                 next_page = False
 
         return Table(items)
+
+    def _request_with_rate_limit_retry(self, method, *args, **kwargs) -> dict:
+        """Make a request to the Slack API and retry if rate limited."""
+        try:
+            response = method(*args, **kwargs)
+        except SlackApiError as e:
+            if e.response.status_code == 429:
+                delay = int(e.response.headers["Retry-After"])
+                print(f"Rate limited. Retrying in {delay} seconds")
+                time.sleep(delay)
+                response = method(*args, **kwargs)
+            else:
+                raise
+        return response

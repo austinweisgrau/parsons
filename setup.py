@@ -1,6 +1,7 @@
 import os
 from distutils.core import setup
 from pathlib import Path
+
 from setuptools import find_packages
 
 
@@ -22,10 +23,10 @@ def main():
             "braintree": ["braintree"],
             "catalist": ["paramiko"],
             "civis": ["civis"],
-            "dbt-redshift": ["dbt-redshift", "slackclient<2"],
-            "dbt-bigquery": ["dbt-bigquery", "slackclient<2"],
-            "dbt-postgres": ["dbt-postgres", "slackclient<2"],
-            "dbt-snowflake": ["dbt-snowflake", "slackclient<2"],
+            "dbt-redshift": ["dbt-redshift"],
+            "dbt-bigquery": ["dbt-bigquery"],
+            "dbt-postgres": ["dbt-postgres"],
+            "dbt-snowflake": ["dbt-snowflake"],
             "facebook": ["joblib", "facebook-business"],
             "geocode": ["censusgeocode", "urllib3==1.26.19"],
             "github": ["PyGitHub"],
@@ -62,7 +63,7 @@ def main():
             "salesforce": ["simple-salesforce"],
             "scytl": ["defusedxml", "pytz"],
             "sftp": ["paramiko"],
-            "slack": ["slackclient<2"],
+            "slack": ["slack_sdk>3,<4"],
             "smtp": ["validate-email"],
             "targetsmart": ["xmltodict", "defusedxml"],
             "twilio": ["twilio"],

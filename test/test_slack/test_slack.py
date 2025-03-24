@@ -3,7 +3,7 @@ import os
 import unittest
 
 import requests_mock
-from slackclient.exceptions import SlackClientError
+from slack_sdk.errors import SlackApiError
 
 from parsons import Slack, Table
 
@@ -246,7 +246,7 @@ class TestSlack(unittest.TestCase):
         )
 
         self.assertRaises(
-            SlackClientError,
+            SlackApiError,
             self.slack.message_channel,
             "FakeChannel",
             "Here's a message for you",
@@ -281,4 +281,4 @@ class TestSlack(unittest.TestCase):
             json={"ok": False, "error": "invalid_auth"},
         )
 
-        self.assertRaises(SlackClientError, self.slack.upload_file, ["D0L4B9P0Q"], file_path)
+        self.assertRaises(SlackApiError, self.slack.upload_file, ["D0L4B9P0Q"], file_path)
