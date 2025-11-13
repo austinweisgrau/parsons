@@ -223,6 +223,7 @@ class dbtLoggerDatabase(dbtLogger, ABC):
         run_metadata.update(**self.extra_run_table_fields)
         run_metadata["run_id"] = dbt_run_id
         run_tbl = Table([run_metadata])
+        run_tbl.add_column("loaded_at", datetime.datetime.now().isoformat())
 
         node_rows = []
         for result in manifest.results:
@@ -253,6 +254,7 @@ class dbtLoggerDatabase(dbtLogger, ABC):
             node_rows.append(node_row)
 
         nodes_tbl = Table(node_rows)
+        nodes_tbl.add_column("loaded_at", datetime.datetime.now().isoformat())
         return run_tbl, nodes_tbl
 
     def format_result(self) -> tuple[Table, Table]:
