@@ -67,7 +67,13 @@ class dbtLogger(ABC):
 
 class dbtLoggerMarkdown(dbtLogger):
     """Formats dbt results into a structured Markdown summary."""
+    def __init__(self, log_extras: dict[str, str] | None = None) -> None:
+        self.log_extras = log_extras or {}
 
+    def format_command_result(
+        self,
+        manifest: Manifest,
+    ) -> str:
     # Centralized mapping for status UI elements
     STATUS_MAP = {
         str(NodeStatus.Error): {"icon": "🔴", "text": "failed"},
@@ -107,14 +113,17 @@ class dbtLoggerMarkdown(dbtLogger):
         log_message += f"\n*GB Processed*: {manifest.total_gb_processed:.2f}"
         log_message += f"\n*Slot hours*: {manifest.total_slot_hours:.2f}"
 
-        # Error/Warning Blocks
-        for label, nodes in [
-            ("Error", [*manifest.errors, *manifest.fails]),
-            ("Warn", manifest.warnings),
-        ]:
-            if nodes:
-                msgs = "\n\n".join(
-                    [f"{i.node.name}: {EnhancedNodeResult.log_message(i) or ''}" for i in nodes]
+        for key, value in self.log_extras.items():
+            log_message += f"\n*{key}*: {value}"
+
+        # Errors
+        if manifest.errors or manifest.fails:
+            log_message += "\nError messages:\n```{}```".format(
+                "\n\n".join(
+                    [
+                        i.node.name + ": " + (EnhancedNodeResult.log_message(i) or "")
+                        for i in [*manifest.errors, *manifest.fails]
+                    ]
                 )
                 log_message += f"\n{label} messages:\n```\n{msgs}\n```"
 
