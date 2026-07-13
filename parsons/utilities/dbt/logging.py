@@ -68,6 +68,9 @@ class dbtLogger(ABC):
 class dbtLoggerMarkdown(dbtLogger):
     """Formats dbt results into a structured Markdown summary."""
 
+    def __init__(self, log_extras: dict[str, str] | None = None) -> None:
+        self.log_extras = log_extras or {}
+
     # Centralized mapping for status UI elements
     STATUS_MAP = {
         str(NodeStatus.Error): {"icon": "🔴", "text": "failed"},
@@ -106,6 +109,9 @@ class dbtLoggerMarkdown(dbtLogger):
         log_message += f"\n*Summary*: `{log_summary_str}`"
         log_message += f"\n*GB Processed*: {manifest.total_gb_processed:.2f}"
         log_message += f"\n*Slot hours*: {manifest.total_slot_hours:.2f}"
+
+        for key, value in self.log_extras.items():
+            log_message += f"\n*{key}*: {value}"
 
         # Error/Warning Blocks
         for label, nodes in [
